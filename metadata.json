@@ -1,10 +1,12 @@
 {
   "uuid": "border-radius-manager@vidalwannabe.github.io",
   "name": "Border Radius Manager",
-  "description": "Customize the corner radius of GNOME Shell elements (menus, quick settings, notifications, dash, search...).",
+  "description": "Rounded corners for application windows (with custom shadows, borders and per-app settings) plus corner radius control for GNOME Shell elements: menus, calendar, notifications, dash, search and the quick settings menu. Inspired by Rounded Window Corners.",
   "url": "https://github.com/vidalwannabe/border-radius-manager",
   "settings-schema": "org.gnome.shell.extensions.border-radius-manager",
-  "shell-version": ["48"],
+  "shell-version": [
+    "48"
+  ],
   "version": 1,
   "version-name": "1.0"
 }

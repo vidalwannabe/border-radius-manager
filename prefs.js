@@ -1,70 +1,23 @@
+/** @file Preferences window: window corners (General, Blacklist, Custom) and Shell Elements. */
+import Gdk from 'gi://Gdk';
+import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
-import Gio from 'gi://Gio';
-import Adw from 'gi://Adw';
-import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
-
-const HINT = '-1 = system default, 0 = square corners.';
-
-// [group title, group description, rows: [key, title, subtitle]]
-const GROUPS = [
-    ['Rounding', `Corner radius in pixels. ${HINT}`, [
-        ['radius-popup', 'Menus'],
-        ['radius-datemenu', 'Calendar / date', 'Date menu, events, world clocks, weather'],
-        ['radius-notification', 'Notifications', 'Notification cards and Clear button'],
-        ['radius-modal', 'Dialogs'],
-        ['radius-dash', 'Dash'],
-        ['radius-switcher', 'Alt+Tab'],
-        ['radius-tile', 'App icons'],
-        ['radius-search', 'Search results'],
-        ['radius-search-entry', 'Search bar', 'Overview search field'],
-    ]],
-    ['Quick settings', `Panel, buttons, submenus and media player of the quick settings menu. ${HINT}`, [
-        ['radius-quick-settings', 'Panel', 'Background of the whole quick settings menu'],
-        ['radius-quick-toggle', 'Toggle buttons', 'Wi-Fi, Bluetooth, Dark Style... (active or not)'],
-        ['radius-quick-header', 'Header buttons', 'Battery, screenshot, settings, lock, power'],
-        ['radius-quick-submenu', 'Submenu boxes', 'Boxes that open under toggles, like the Wi-Fi list'],
-        ['radius-media', 'Media player', 'Player card'],
-    ]],
-];
-
+import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import { prefsTabs } from './preferences/index.js';
+import { initPrefs, uninitPrefs } from './utils/settings.js';
 export default class BorderRadiusManagerPrefs extends ExtensionPreferences {
-    fillPreferencesWindow(window) {
-        const s = this.getSettings();
-        window.set_default_size(600, 740);
-
-        const page = new Adw.PreferencesPage({title: 'Border Radius', icon_name: 'applications-graphics-symbolic'});
-        const keys = [];
-
-        for (const [title, description, rows] of GROUPS) {
-            const group = new Adw.PreferencesGroup({title, description});
-            for (const [key, rowTitle, subtitle] of rows) {
-                const row = new Adw.SpinRow({
-                    title: rowTitle,
-                    adjustment: new Gtk.Adjustment({lower: -1, upper: 60, step_increment: 1, page_increment: 4}),
-                });
-                if (subtitle)
-                    row.set_subtitle(subtitle);
-                s.bind(key, row, 'value', Gio.SettingsBindFlags.DEFAULT);
-                // -1 also clears the saved value, so the key is back to its default.
-                row.connect('notify::value', () => {
-                    if (row.get_value() === -1 && s.get_user_value(key) !== null)
-                        s.reset(key);
-                });
-                group.add(row);
-                keys.push(key);
-            }
-            page.add(group);
+    async fillPreferencesWindow(win) {
+        initPrefs(this.getSettings());
+        win.set_default_size(600, 740);
+        for (const page of prefsTabs) {
+            win.add(new page());
         }
-
-        const resetRow = new Adw.ActionRow({title: 'Restore all to system default'});
-        const resetAll = new Gtk.Button({label: 'Restore defaults', valign: Gtk.Align.CENTER});
-        resetAll.add_css_class('destructive-action');
-        resetAll.connect('clicked', () => keys.forEach(k => s.reset(k)));
-        resetRow.add_suffix(resetAll);
-        const resetGroup = new Adw.PreferencesGroup();
-        resetGroup.add(resetRow);
-        page.add(resetGroup);
-
-        window.add(page);
+        win.connect('close-request', () => uninitPrefs());
+        const display = Gdk.Display.get_default();
+        if (display) {
+            const css = new Gtk.CssProvider();
+            css.load_from_path(GLib.build_filenamev([this.path, 'stylesheet-prefs.css']));
+            Gtk.StyleContext.add_provider_for_display(display, css, 0);
+        }
     }
 }

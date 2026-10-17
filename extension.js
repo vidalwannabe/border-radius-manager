@@ -1,104 +1,88 @@
-import St from 'gi://St';
-import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
-
-import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
-
-// [setting key, selectors]. A value of -1 keeps the theme's own radius.
-const RADII = [
-    ['radius-popup', '.popup-menu-content, .candidate-popup-content'],
-    ['radius-datemenu', '.datemenu-popover, .calendar, .datemenu-today-button, .events-button, .world-clocks-button, .weather-button'],
-    ['radius-notification', '.message, .notification-banner, .message-list-clear-button'],
-    ['radius-modal', '.modal-dialog'],
-    ['radius-dash', '#dash .dash-background'],
-    ['radius-switcher', '.switcher-list'],
-    ['radius-tile', '.overview-tile, .grid-search-result'],
-    ['radius-search', '.search-section-content'],
-    ['radius-search-entry', '.search-entry'],
-    ['radius-quick-settings', '.quick-settings'],
-    ['radius-quick-header', '.quick-settings-system-item StButton, .quick-settings-system-item .button, .quick-settings-system-item .icon-button, .quick-settings-system-item .power-item'],
-    ['radius-quick-submenu', '.quick-toggle-menu'],
-    ['radius-media', '.message.media-message, .media-message, .quick-settings .message, .quick-settings .media-message'],
-];
-
-// Toggles with a menu arrow are two halves; their inner corners stay square.
-const toggleCss = r => [
-    ['.quick-toggle, .quick-toggle-has-menu', `${r}px`],
-    ['.quick-toggle-has-menu .quick-toggle:ltr', `${r}px 0 0 ${r}px`],
-    ['.quick-toggle-has-menu .quick-toggle:rtl', `0 ${r}px ${r}px 0`],
-    ['.quick-toggle-has-menu .quick-toggle-menu-button:ltr', `0 ${r}px ${r}px 0`],
-    ['.quick-toggle-has-menu .quick-toggle-menu-button:rtl', `${r}px 0 0 ${r}px`],
-    ['.quick-toggle-has-menu .quick-toggle:ltr:last-child, .quick-toggle-has-menu .quick-toggle:rtl:last-child', `${r}px`],
-];
-
-// !important so these win over the shell theme and other extensions' stylesheets.
-const rule = (selector, radius) => `${selector} {\n  border-radius: ${radius} !important;\n}\n`;
-
-export default class BorderRadiusManagerExtension extends Extension {
-    _buildCss() {
-        let css = '';
-        for (const [key, selector] of RADII) {
-            const r = this._settings.get_int(key);
-            if (r >= 0)
-                css += rule(selector, `${r}px`);
-        }
-        const r = this._settings.get_int('radius-quick-toggle');
-        if (r >= 0)
-            css += toggleCss(r).map(([selector, radius]) => rule(selector, radius)).join('');
-        return css;
+import { Extension, InjectionManager, } from 'resource:///org/gnome/shell/extensions/extension.js';
+import { layoutManager } from 'resource:///org/gnome/shell/ui/main.js';
+import { WindowPreview } from 'resource:///org/gnome/shell/ui/windowPreview.js';
+import { WorkspaceAnimationController } from 'resource:///org/gnome/shell/ui/workspaceAnimation.js';
+import { disableEffect, enableEffect } from './manager/event_manager.js';
+import { addShadowInOverview } from './patch/add_shadow_in_overview.js';
+import { addShadowsInWorkspaceSwitch, removeShadowsAfterWorkspaceSwitch, } from './patch/workspace_switch.js';
+import { ShellElements } from './shell_elements.js';
+import { disableBackgroundMenuItem, enableBackgroundMenuItem, } from './utils/background_menu.js';
+import { getPref, initPrefs, prefs, uninitPrefs } from './utils/settings.js';
+import { WindowPicker } from './window_picker/service.js';
+export default class BorderRadiusManager extends Extension {
+    // Window corners work by overriding (monkey patching) GNOME Shell's
+    // internal methods. InjectionManager restores them on disable.
+    #injectionManager = null;
+    #windowPicker = null;
+    #shellElements = null;
+    #startupConnection = null;
+    #prefsConnection = null;
+    #workspaceSwitchConnections = null;
+    #startWindowCorners() {
+        enableEffect();
+        if (getPref('enable-preferences-entry'))
+            enableBackgroundMenuItem();
     }
-
-    _apply() {
-        this._unload();
-        const css = this._buildCss();
-        if (!css)
-            return;
-        try {
-            const dir = GLib.build_filenamev([GLib.get_user_cache_dir(), 'border-radius-manager']);
-            GLib.mkdir_with_parents(dir, 0o755);
-            const file = Gio.File.new_for_path(GLib.build_filenamev([dir, `radius-${Date.now()}.css`]));
-            file.replace_contents(new TextEncoder().encode(css), null, false,
-                Gio.FileCreateFlags.REPLACE_DESTINATION, null);
-            St.ThemeContext.get_for_stage(global.stage).get_theme().load_stylesheet(file);
-            this._file = file;
-        } catch (e) {
-            console.error(`[BorderRadiusManager] ${e.message}`);
-        }
-    }
-
-    _unload() {
-        if (!this._file)
-            return;
-        try {
-            St.ThemeContext.get_for_stage(global.stage).get_theme().unload_stylesheet(this._file);
-            this._file.delete(null);
-        } catch (e) {
-            // The file may already be gone; nothing else to clean.
-        }
-        this._file = null;
-    }
-
     enable() {
-        this._settings = this.getSettings();
-        this._settingsId = this._settings.connect('changed', () => {
-            if (this._applyId)
-                GLib.Source.remove(this._applyId);
-            this._applyId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
-                this._applyId = null;
-                this._apply();
-                return GLib.SOURCE_REMOVE;
+        initPrefs(this.getSettings());
+        // Shell elements only need a stylesheet; it can load right away.
+        this.#shellElements = new ShellElements(prefs);
+        this.#shellElements.enable();
+        // D-Bus window picker used by the Blacklist/Custom tabs.
+        this.#windowPicker = new WindowPicker();
+        this.#windowPicker.export();
+        // Wait for GNOME Shell to be ready before rounding windows.
+        if (layoutManager._startingUp) {
+            this.#startupConnection = layoutManager.connect('startup-complete', () => {
+                layoutManager.disconnect(this.#startupConnection);
+                this.#startupConnection = null;
+                this.#startWindowCorners();
             });
-        });
-        this._apply();
-    }
-
-    disable() {
-        if (this._applyId) {
-            GLib.Source.remove(this._applyId);
-            this._applyId = null;
         }
-        this._settings.disconnect(this._settingsId);
-        this._settings = null;
-        this._unload();
+        else {
+            this.#startWindowCorners();
+        }
+        const self = this;
+        this.#injectionManager = new InjectionManager();
+        // Overview window previews need their own shadow actor.
+        this.#injectionManager.overrideMethod(WindowPreview.prototype, '_addWindow', addWindow => function (window) {
+            addWindow.call(this, window);
+            addShadowInOverview(window, this);
+        });
+        // Same for windows while switching workspaces.
+        this.#injectionManager.overrideMethod(WorkspaceAnimationController.prototype, '_prepareWorkspaceSwitch', prepareWorkspaceSwitch => function (workspaceIndices) {
+            prepareWorkspaceSwitch.call(this, workspaceIndices);
+            self.#workspaceSwitchConnections = addShadowsInWorkspaceSwitch(this);
+        });
+        this.#injectionManager.overrideMethod(WorkspaceAnimationController.prototype, '_finishWorkspaceSwitch', finishWorkspaceSwitch => function (switchData) {
+            removeShadowsAfterWorkspaceSwitch(this);
+            finishWorkspaceSwitch.call(this, switchData);
+        });
+        this.#prefsConnection = prefs.connect('changed::enable-preferences-entry', () => {
+            getPref('enable-preferences-entry')
+                ? enableBackgroundMenuItem()
+                : disableBackgroundMenuItem();
+        });
+    }
+    disable() {
+        this.#injectionManager?.clear();
+        this.#injectionManager = null;
+        prefs.disconnect(this.#prefsConnection);
+        this.#prefsConnection = null;
+        disableBackgroundMenuItem();
+        this.#windowPicker?.unexport();
+        this.#windowPicker = null;
+        disableEffect();
+        this.#shellElements?.disable();
+        this.#shellElements = null;
+        if (this.#startupConnection !== null) {
+            layoutManager.disconnect(this.#startupConnection);
+            this.#startupConnection = null;
+        }
+        for (const connection of this.#workspaceSwitchConnections ?? []) {
+            connection.object.disconnect(connection.id);
+        }
+        this.#workspaceSwitchConnections = null;
+        uninitPrefs();
     }
 }
