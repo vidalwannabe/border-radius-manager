@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <!-- Corner radius in pixels. -1 = system default, 0 = square corners. -->
+  <schema id="org.gnome.shell.extensions.border-radius-manager" path="/org/gnome/shell/extensions/border-radius-manager/">
+    <key name="radius-popup" type="i"><range min="-1" max="60"/><default>-1</default><summary>Menus</summary></key>
+    <key name="radius-datemenu" type="i"><range min="-1" max="60"/><default>-1</default><summary>Calendar / date</summary></key>
+    <key name="radius-notification" type="i"><range min="-1" max="60"/><default>-1</default><summary>Notifications</summary></key>
+    <key name="radius-modal" type="i"><range min="-1" max="60"/><default>-1</default><summary>Dialogs</summary></key>
+    <key name="radius-dash" type="i"><range min="-1" max="60"/><default>-1</default><summary>Dash</summary></key>
+    <key name="radius-switcher" type="i"><range min="-1" max="60"/><default>-1</default><summary>Alt+Tab</summary></key>
+    <key name="radius-tile" type="i"><range min="-1" max="60"/><default>-1</default><summary>App icons</summary></key>
+    <key name="radius-search" type="i"><range min="-1" max="60"/><default>-1</default><summary>Search results</summary></key>
+    <key name="radius-search-entry" type="i"><range min="-1" max="60"/><default>-1</default><summary>Search bar</summary></key>
+    <key name="radius-quick-settings" type="i"><range min="-1" max="60"/><default>-1</default><summary>Quick settings panel</summary></key>
+    <key name="radius-quick-toggle" type="i"><range min="-1" max="60"/><default>-1</default><summary>Quick settings toggle buttons</summary></key>
+    <key name="radius-quick-header" type="i"><range min="-1" max="60"/><default>-1</default><summary>Quick settings header buttons</summary></key>
+    <key name="radius-quick-submenu" type="i"><range min="-1" max="60"/><default>-1</default><summary>Quick settings submenu boxes</summary></key>
+    <key name="radius-media" type="i"><range min="-1" max="60"/><default>-1</default><summary>Media player</summary></key>
+  </schema>
+</schemalist>
