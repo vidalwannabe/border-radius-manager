@@ -8,7 +8,7 @@ import Gdk from 'gi://Gdk';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import { gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
-import { getPref, setPref } from '../../utils/settings.js';
+import { getPref, prefs, setPref } from '../../utils/settings.js';
 import { BrmCustomSettingsRow, CustomSettingsRowClass, } from '../widgets/custom_settings_row.js';
 export const CustomPage = GObject.registerClass({
     Template: GLib.uri_resolve_relative(import.meta.url, 'custom.ui', GLib.UriFlags.NONE),
@@ -91,6 +91,15 @@ export const CustomPage = GObject.registerClass({
         r.connect('notify::subtitle', (row) => {
             row.checkState();
         });
+        // The border color does nothing while the border cuts the window.
+        const updateBorderMode = () => {
+            r.borderColorAllowed = getPref('border-mode') !== 'cut';
+            r.checkState();
+        };
+        updateBorderMode();
+        const settings = prefs;
+        const modeId = settings.connect('changed::border-mode', updateBorderMode);
+        r.connect('destroy', () => settings.disconnect(modeId));
         r.enabledRow.set_active(this.#customWindowSettings[wmClass].enabled);
         r.enabledRow.connect('notify::active', (row) => {
             r.checkState();
@@ -121,18 +130,6 @@ export const CustomPage = GObject.registerClass({
         r.cornerSmoothing.connect('value-changed', (adj) => {
             this.#customWindowSettings[wmClass].smoothing =
                 adj.get_value();
-            setPref('custom-rounded-corner-settings', this.#customWindowSettings);
-        });
-        r.keepForMaximized.set_active(this.#customWindowSettings[wmClass].keepRoundedCorners
-            .maximized);
-        r.keepForMaximized.connect('notify::active', (row) => {
-            this.#customWindowSettings[wmClass].keepRoundedCorners.maximized = row.get_active();
-            setPref('custom-rounded-corner-settings', this.#customWindowSettings);
-        });
-        r.keepForFullscreen.set_active(this.#customWindowSettings[wmClass].keepRoundedCorners
-            .fullscreen);
-        r.keepForFullscreen.connect('notify::active', (row) => {
-            this.#customWindowSettings[wmClass].keepRoundedCorners.fullscreen = row.get_active();
             setPref('custom-rounded-corner-settings', this.#customWindowSettings);
         });
         r.paddings.paddingTop =

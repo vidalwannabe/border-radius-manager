@@ -6,7 +6,6 @@ import { overview } from 'resource:///org/gnome/shell/ui/main.js';
 import { LinearFilterEffect } from '../effect/linear_filter_effect.js';
 import { shouldEnableEffect, windowScaleFactor } from '../manager/utils.js';
 import { OVERVIEW_SHADOW_ACTOR, SHADOW_PADDING } from '../utils/constants.js';
-import { logDebug } from '../utils/log.js';
 /**
  * Add a shadow actor to a window preview in the overview.
  * @param window - The window that the preview is of.
@@ -30,7 +29,6 @@ export function addShadowInOverview(window, self) {
     if (!(hasRoundedCorners && shadow)) {
         return;
     }
-    logDebug(`Adding shadow for ${window.title} in overview`);
     // windowContainer has the actual contents of the window preview
     const windowContainer = self.windowContainer;
     let firstChild = windowContainer.firstChild;

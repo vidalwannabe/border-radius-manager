@@ -2,10 +2,8 @@
 import { BlacklistPage } from '../preferences/pages/blacklist.js';
 import { CustomPage } from '../preferences/pages/custom.js';
 import { GeneralPage } from '../preferences/pages/general.js';
-import { ShellElementsPage } from '../preferences/pages/shell_elements.js';
 export const prefsTabs = [
     GeneralPage,
-    BlacklistPage,
     CustomPage,
-    ShellElementsPage,
+    BlacklistPage,
 ];

@@ -35,14 +35,8 @@ export class CustomSettingsRowClass extends AppRowClass {
         stepIncrement: 0.1,
         pageIncrement: 0.1,
     });
-    keepForMaximized = new Adw.SwitchRow({
-        title: _('Keep rounded corners when maximized'),
-        subtitle: _('Always clip rounded corners even if window is maximized or tiled'),
-    });
-    keepForFullscreen = new Adw.SwitchRow({
-        title: _('Keep rounded corners when in fullscreen'),
-        subtitle: _('Always clip rounded corners even for fullscreen window'),
-    });
+    // False while the border is set to cut instead of paint.
+    borderColorAllowed = true;
     paddings = new BrmPaddingsRow();
     constructor(cb) {
         super(cb);
@@ -71,8 +65,6 @@ export class CustomSettingsRowClass extends AppRowClass {
         this.add_row(this.#borderColorRow);
         this.add_row(this.#cornerRadiusRow);
         this.add_row(this.#cornerSmoothingRow);
-        this.add_row(this.keepForMaximized);
-        this.add_row(this.keepForFullscreen);
         this.add_row(this.paddings);
         this.checkState();
     }
@@ -88,11 +80,9 @@ export class CustomSettingsRowClass extends AppRowClass {
         this.toggleSensitivity(true);
     }
     toggleSensitivity(state) {
-        this.#borderColorRow.set_sensitive(state);
+        this.#borderColorRow.set_sensitive(state && this.borderColorAllowed);
         this.#cornerRadiusRow.set_sensitive(state);
         this.#cornerSmoothingRow.set_sensitive(state);
-        this.keepForMaximized.set_sensitive(state);
-        this.keepForFullscreen.set_sensitive(state);
         this.paddings.set_sensitive(state);
     }
 }

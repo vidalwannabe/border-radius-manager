@@ -1,14 +1,4 @@
-/** @file Provides wrapper functions for printing out debug messages. */
-import { getPref } from './settings.js';
-/**
- * Log a message with a [Border Radius Manager] prefix, but only
- * when debug mode is enabled.
- */
-export function logDebug(...args) {
-    if (getPref('debug-mode')) {
-        console.log(`[Border Radius Manager] ${args}`);
-    }
-}
+/** @file Provides a wrapper function for printing out errors. */
 /**
  * Log an error with a [Border Radius Manager] prefix.
  */

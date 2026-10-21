@@ -3,9 +3,9 @@ import Gio from 'gi://Gio';
 import Meta from 'gi://Meta';
 import St from 'gi://St';
 import { boxShadowCss } from '../utils/box_shadow.js';
-import { APP_SHADOWS, ROUNDED_CORNERS_EFFECT, SHADOW_PADDING, } from '../utils/constants.js';
+import { FOCUSED_SHADOW, ROUNDED_CORNERS_EFFECT, SHADOW_PADDING, } from '../utils/constants.js';
 import { readFile } from '../utils/file.js';
-import { logDebug } from '../utils/log.js';
+import { logError } from '../utils/log.js';
 import { getPref } from '../utils/settings.js';
 /**
  * Get the actor that rounded corners should be applied to.
@@ -73,25 +73,24 @@ export function windowScaleFactor(win) {
  * @param [x, y, width, height] - The content offsets of the window actor.
  */
 export function computeBounds(actor, [x, y, width, height]) {
-    const bounds = {
+    return {
         x1: x + 1,
         y1: y + 1,
         x2: x + actor.width + width,
         y2: y + actor.height + height,
     };
-    // Kitty draws its window decoration by itself, so we need to manually
-    // clip its shadow and recompute the outer bounds for it.
-    if (getPref('tweak-kitty-terminal') &&
-        actor.metaWindow.get_client_type() === Meta.WindowClientType.WAYLAND &&
-        actor.metaWindow.get_wm_class_instance() === 'kitty') {
-        const [x1, y1, x2, y2] = APP_SHADOWS.kitty;
-        const scale = windowScaleFactor(actor.metaWindow);
-        bounds.x1 += x1 * scale;
-        bounds.y1 += y1 * scale;
-        bounds.x2 -= x2 * scale;
-        bounds.y2 -= y2 * scale;
+}
+/**
+ * Width of the border when it is set to cut the window instead of painting
+ * it. Negative widths (outer borders) can't cut anything, so they count as 0.
+ *
+ * @returns The width to trim from every side, or 0 in paint mode.
+ */
+export function cutBorderWidth() {
+    if (getPref('border-mode') !== 'cut') {
+        return 0;
     }
-    return bounds;
+    return Math.max(0, getPref('border-width'));
 }
 /**
  * Compute the offset of actual window contents from the entire window buffer.
@@ -133,8 +132,15 @@ export function computeShadowActorOffset(actor, [offsetX, offsetY, offsetWidth, 
  * @param shadow - The shadow settings for the window.
  * @param padding - The padding of the shadow actor.
  */
-export function updateShadowActorStyle(win, actor, borderRadius = getPref('global-rounded-corner-settings').borderRadius, shadow = getPref('focused-shadow'), padding = getPref('global-rounded-corner-settings').padding) {
-    const { left, right, top, bottom } = padding;
+export function updateShadowActorStyle(win, actor, borderRadius = getPref('global-rounded-corner-settings').borderRadius, shadow = FOCUSED_SHADOW, padding = getPref('global-rounded-corner-settings').padding) {
+    // In cut mode the visible window shrinks by the border width, so the
+    // shadow has to shrink with it and follow the smaller corners.
+    const cut = cutBorderWidth();
+    borderRadius = Math.max(0, borderRadius - cut);
+    const left = padding.left + cut;
+    const right = padding.right + cut;
+    const top = padding.top + cut;
+    const bottom = padding.bottom + cut;
     // Increase border_radius when smoothing is on
     let adjustedBorderRadius = borderRadius;
     if (getPref('global-rounded-corner-settings') !== null) {
@@ -176,7 +182,6 @@ export function shouldEnableEffect(win) {
     // Skip blacklisted applications.
     const wmClass = win.get_wm_class_instance();
     if (wmClass == null) {
-        logDebug(`Warning: wm_class_instance of ${win}: ${win.title} is null`);
         return false;
     }
     if (getPref('blacklist').includes(wmClass)) {
@@ -191,20 +196,16 @@ export function shouldEnableEffect(win) {
     // Skip libhandy/libadwaita applications according to settings.
     const appType = win._appType ?? getAppType(win);
     win._appType = appType; // Cache the result.
-    logDebug(`Check Type of window:${win.title} => ${appType}`);
     if (getPref('skip-libadwaita-app') && appType === 'LibAdwaita') {
         return false;
     }
     if (getPref('skip-libhandy-app') && appType === 'LibHandy') {
         return false;
     }
-    // Skip maximized/fullscreen windows according to settings.
-    const maximized = win.maximizedHorizontally || win.maximizedVertically;
-    const fullscreen = win.fullscreen;
-    const cfg = getRoundedCornersCfg(win);
-    return (!(maximized || fullscreen) ||
-        (maximized && !fullscreen && cfg.keepRoundedCorners.maximized) ||
-        (fullscreen && cfg.keepRoundedCorners.fullscreen));
+    // Maximized and fullscreen windows keep square corners.
+    return !(win.maximizedHorizontally ||
+        win.maximizedVertically ||
+        win.fullscreen);
 }
 /**
  * Get the type of the application (LibHandy/LibAdwaita/Other).

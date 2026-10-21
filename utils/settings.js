@@ -4,7 +4,6 @@
  * are used for storing GSettings.
  */
 import GLib from 'gi://GLib';
-import { logDebug } from './log.js';
 /** Mapping of schema keys to their GLib Variant type string */
 export const Schema = {
     'settings-version': 'u',
@@ -14,11 +13,10 @@ export const Schema = {
     'border-width': 'i',
     'global-rounded-corner-settings': 'a{sv}',
     'custom-rounded-corner-settings': 'a{sv}',
-    'focused-shadow': 'a{si}',
-    'unfocused-shadow': 'a{si}',
-    'debug-mode': 'b',
-    'tweak-kitty-terminal': 'b',
     'enable-preferences-entry': 'b',
+    'border-mode': 's',
+    'round-shell-elements': 'b',
+    'round-circular-elements': 'b',
 };
 /** The raw GSettings object for direct manipulation. */
 export let prefs;
@@ -52,7 +50,6 @@ export function getPref(key) {
  * @param value - The value to set the preference to.
  */
 export function setPref(key, value) {
-    logDebug(`Settings pref: ${key}, ${value}`);
     let variant;
     if (key === 'global-rounded-corner-settings') {
         variant = packRoundedCornerSettings(value);
@@ -91,8 +88,6 @@ function resetOutdated(prefs) {
         if (prefs.list_keys().includes('border-color')) {
             prefs.reset('border-color');
         }
-        prefs.reset('focused-shadow');
-        prefs.reset('unfocused-shadow');
         prefs.set_uint('settings-version', lastVersion);
     }
 }
@@ -110,14 +105,12 @@ function resetOutdated(prefs) {
  */
 function packRoundedCornerSettings(settings) {
     const padding = new GLib.Variant('a{su}', settings.padding);
-    const keepRoundedCorners = new GLib.Variant('a{sb}', settings.keepRoundedCorners);
     const borderRadius = GLib.Variant.new_uint32(settings.borderRadius);
     const smoothing = GLib.Variant.new_double(settings.smoothing);
     const borderColor = new GLib.Variant('(dddd)', settings.borderColor);
     const enabled = GLib.Variant.new_boolean(settings.enabled);
     const variantObject = {
         padding: padding,
-        keepRoundedCorners: keepRoundedCorners,
         borderRadius: borderRadius,
         smoothing: smoothing,
         borderColor: borderColor,

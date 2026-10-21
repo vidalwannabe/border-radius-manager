@@ -9,15 +9,11 @@ import GObject from 'gi://GObject';
 import St from 'gi://St';
 import { ClipShadowEffect } from '../effect/clip_shadow_effect.js';
 import { RoundedCornersEffect } from '../effect/rounded_corners_effect.js';
-import { CLIP_SHADOW_EFFECT, ROUNDED_CORNERS_EFFECT, } from '../utils/constants.js';
-import { logDebug } from '../utils/log.js';
-import { getPref } from '../utils/settings.js';
+import { CLIP_SHADOW_EFFECT, FOCUSED_SHADOW, ROUNDED_CORNERS_EFFECT, UNFOCUSED_SHADOW, } from '../utils/constants.js';
 import { computeBounds, computeShadowActorOffset, computeWindowContentsOffset, getRoundedCornersCfg, getRoundedCornersEffect, shouldEnableEffect, unwrapActor, updateShadowActorStyle, windowScaleFactor, } from './utils.js';
 export function onAddEffect(actor) {
-    logDebug(`Adding effect to ${actor?.metaWindow.title}`);
     const win = actor.metaWindow;
     if (!shouldEnableEffect(win)) {
-        logDebug(`Skipping ${win.title}`);
         return;
     }
     unwrapActor(actor)?.add_effect_with_name(ROUNDED_CORNERS_EFFECT, new RoundedCornersEffect());
@@ -66,7 +62,6 @@ export function onMinimize(actor) {
     const shadow = actor.rwcCustomData?.shadow;
     const roundedCornersEffect = getRoundedCornersEffect(actor);
     if (magicLampEffect && shadow && roundedCornersEffect) {
-        logDebug('Minimizing with magic lamp effect');
         shadow.visible = false;
         roundedCornersEffect.enabled = false;
     }
@@ -84,7 +79,6 @@ export function onUnminimize(actor) {
         const id = timer.connect('new-frame', source => {
             // Wait until the effect is 98% completed
             if (source.get_progress() > 0.98) {
-                logDebug('Unminimizing with magic lamp effect');
                 shadow.visible = true;
                 roundedCornersEffect.enabled = true;
                 source.disconnect(id);
@@ -148,8 +142,8 @@ function refreshShadow(actor) {
         return;
     }
     const shadowSettings = win.appears_focused
-        ? getPref('focused-shadow')
-        : getPref('unfocused-shadow');
+        ? FOCUSED_SHADOW
+        : UNFOCUSED_SHADOW;
     const { borderRadius, padding } = getRoundedCornersCfg(win);
     updateShadowActorStyle(win, shadow, borderRadius, shadowSettings, padding);
 }

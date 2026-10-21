@@ -2,7 +2,6 @@
  * @file Manages connections between gnome shell events and the rounded corners
  * effect. See {@link enableEffect} for more information.
  */
-import { logDebug } from '../utils/log.js';
 import { prefs } from '../utils/settings.js';
 import * as handlers from './event_handlers.js';
 /**
@@ -19,7 +18,6 @@ export function enableEffect() {
     const wm = global.windowManager;
     // Add the effect to all windows when the extension is enabled.
     const windowActors = global.get_window_actors();
-    logDebug(`Initial window count: ${windowActors.length}`);
     for (const actor of windowActors) {
         applyEffectTo(actor);
     }

@@ -50,10 +50,6 @@
             'top': &lt;uint32 1&gt;,
             'bottom': &lt;uint32 1&gt;
           }&gt;,
-          'keepRoundedCorners': &lt;{
-            'maximized': &lt;false&gt;,
-            'fullscreen': &lt;false&gt;
-          }&gt;,
           'borderRadius': &lt;uint32 12&gt;,
           'smoothing': &lt;0&gt;,
           'borderColor': &lt;[0.5, 0.5, 0.5, 1.0]&gt;,
@@ -67,60 +63,28 @@
       <default>{}</default>
     </key>
 
-
-    <key name="focused-shadow" type="a{si}">
-      <summary>Shadow for focused window</summary>
-      <default>
-        {
-          'horizontalOffset': 0,
-          'verticalOffset': 4,
-          'blurOffset': 28,
-          'spreadRadius': 4,
-          'opacity': 60
-        }
-      </default>
-    </key>
-
-    <key name="unfocused-shadow" type="a{si}">
-      <summary>Shadow for unfocused window</summary>
-      <default>
-        {
-          'horizontalOffset': 0,
-          'verticalOffset': 2,
-          'blurOffset': 12,
-          'spreadRadius': -1,
-          'opacity': 65
-        }
-      </default>
-    </key>
-
-    <key name="debug-mode" type="b">
-      <summary>If enabled, extension will show debug info into journalctl</summary>
-      <default>false</default>
-    </key>
-
-    <key name="tweak-kitty-terminal" type="b">
-      <default>false</default>
-    </key>
-
     <key name="enable-preferences-entry" type="b">
       <default>false</default>
     </key>
 
-    <!-- Shell Elements tab: corner radius in pixels. -1 = system default, 0 = square corners. -->
-    <key name="radius-popup" type="i"><range min="-1" max="60"/><default>-1</default><summary>Menus</summary></key>
-    <key name="radius-datemenu" type="i"><range min="-1" max="60"/><default>-1</default><summary>Calendar / date</summary></key>
-    <key name="radius-notification" type="i"><range min="-1" max="60"/><default>-1</default><summary>Notifications</summary></key>
-    <key name="radius-modal" type="i"><range min="-1" max="60"/><default>-1</default><summary>Dialogs</summary></key>
-    <key name="radius-dash" type="i"><range min="-1" max="60"/><default>-1</default><summary>Dash</summary></key>
-    <key name="radius-switcher" type="i"><range min="-1" max="60"/><default>-1</default><summary>Alt+Tab</summary></key>
-    <key name="radius-tile" type="i"><range min="-1" max="60"/><default>-1</default><summary>App icons</summary></key>
-    <key name="radius-search" type="i"><range min="-1" max="60"/><default>-1</default><summary>Search results</summary></key>
-    <key name="radius-search-entry" type="i"><range min="-1" max="60"/><default>-1</default><summary>Search bar</summary></key>
-    <key name="radius-quick-settings" type="i"><range min="-1" max="60"/><default>-1</default><summary>Quick settings panel</summary></key>
-    <key name="radius-quick-toggle" type="i"><range min="-1" max="60"/><default>-1</default><summary>Quick settings toggle buttons</summary></key>
-    <key name="radius-quick-header" type="i"><range min="-1" max="60"/><default>-1</default><summary>Quick settings header buttons</summary></key>
-    <key name="radius-quick-submenu" type="i"><range min="-1" max="60"/><default>-1</default><summary>Quick settings submenu boxes</summary></key>
-    <key name="radius-media" type="i"><range min="-1" max="60"/><default>-1</default><summary>Media player</summary></key>
+    <key name="border-mode" type="s">
+      <choices>
+        <choice value="paint"/>
+        <choice value="cut"/>
+      </choices>
+      <default>'paint'</default>
+      <summary>Border mode</summary>
+      <description>paint draws the border with the border color; cut trims the window to the border's shape (negative widths are ignored)</description>
+    </key>
+
+    <key name="round-shell-elements" type="b">
+      <default>false</default>
+      <summary>Use the window corner radius for GNOME Shell elements</summary>
+    </key>
+
+    <key name="round-circular-elements" type="b">
+      <default>false</default>
+      <summary>Also apply the radius to circular Shell elements</summary>
+    </key>
   </schema>
 </schemalist>

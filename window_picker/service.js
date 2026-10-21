@@ -8,7 +8,6 @@ import Meta from 'gi://Meta';
 import { Inspector } from 'resource:///org/gnome/shell/ui/lookingGlass.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { readRelativeFile } from '../utils/file.js';
-import { logDebug } from '../utils/log.js';
 /**
  * This class provides the implementation of the DBus interface for the window
  * picker. It implements a single method - `pick` - which opens the window picker
@@ -32,7 +31,6 @@ export class WindowPicker {
         const lookingGlass = Main.createLookingGlass();
         const inspector = new Inspector(lookingGlass);
         inspector.connect('target', (me, target, x, y) => {
-            logDebug(`${me}: pick ${target} in ${x}, ${y}`);
             // Remove the red border effect when the window is picked.
             const effectName = 'lookingGlass_RedBorderEffect';
             for (const effect of target.get_effects()) {
@@ -62,7 +60,6 @@ export class WindowPicker {
     }
     export() {
         this.#dbus.export(Gio.DBus.session, '/org/gnome/shell/extensions/BorderRadiusManager');
-        logDebug('DBus Service exported');
     }
     unexport() {
         this.#dbus.unexport();

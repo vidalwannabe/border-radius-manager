@@ -43,17 +43,23 @@ export const RoundedCornersEffect = GObject.registerClass({}, class Effect exten
      * @param windowBounds - Bounds of the window without padding
      */
     updateUniforms(scaleFactor, config, windowBounds) {
-        const borderWidth = getPref('border-width') * scaleFactor;
+        const cut = getPref('border-mode') === 'cut';
+        let borderWidth = getPref('border-width');
+        // Outer (negative) borders have nothing to cut, so cut mode ignores them.
+        if (cut) {
+            borderWidth = Math.max(0, borderWidth);
+        }
+        borderWidth *= scaleFactor;
         const borderColor = config.borderColor;
         const outerRadius = config.borderRadius * scaleFactor;
         const { padding, smoothing } = config;
-        const bounds = [
+        let bounds = [
             windowBounds.x1 + padding.left * scaleFactor,
             windowBounds.y1 + padding.top * scaleFactor,
             windowBounds.x2 - padding.right * scaleFactor,
             windowBounds.y2 - padding.bottom * scaleFactor,
         ];
-        const borderedAreaBounds = [
+        let borderedAreaBounds = [
             bounds[0] + borderWidth,
             bounds[1] + borderWidth,
             bounds[2] - borderWidth,
@@ -70,12 +76,22 @@ export const RoundedCornersEffect = GObject.registerClass({}, class Effect exten
         // This is needed for squircle corners
         let exponent = smoothing * 10 + 2;
         let radius = outerRadius * 0.5 * exponent;
-        const maxRadius = Math.min(bounds[3] - bounds[0], bounds[4] - bounds[1]);
+        const maxRadius = Math.min(bounds[2] - bounds[0], bounds[3] - bounds[1]);
         if (radius > maxRadius) {
             exponent *= maxRadius / radius;
             radius = maxRadius;
         }
-        borderedAreaRadius *= radius / outerRadius;
+        if (outerRadius > 0) {
+            borderedAreaRadius *= radius / outerRadius;
+        }
+        if (cut) {
+            // Cut mode: the area inside the border becomes the window itself,
+            // so the border strip is clipped away instead of painted.
+            bounds = borderedAreaBounds;
+            radius = borderedAreaRadius;
+            borderWidth = 0;
+            borderedAreaBounds = bounds;
+        }
         this.#setUniforms(bounds, radius, borderWidth, borderColor, borderedAreaBounds, borderedAreaRadius, pixelStep, exponent);
     }
     #setUniforms(bounds, radius, borderWidth, borderColor, borderedAreaBounds, borderedAreaRadius, pixelStep, exponent) {

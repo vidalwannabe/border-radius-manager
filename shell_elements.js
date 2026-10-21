@@ -1,28 +1,74 @@
-/** @file Corner radius of GNOME Shell elements (menus, quick settings, dash...). */
+/**
+ * @file Applies the window corner radius to GNOME Shell elements (menus,
+ * calendar, notifications, quick settings, dash...) through a stylesheet.
+ */
 import St from 'gi://St';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
-// [setting key, selectors]. A value of -1 keeps the theme's own radius.
-const RADII = [
-    ['radius-popup', '.popup-menu-content, .candidate-popup-content'],
-    ['radius-datemenu', '.datemenu-popover, .calendar, .datemenu-today-button, .events-button, .world-clocks-button, .weather-button'],
-    ['radius-notification', '.message, .notification-banner, .message-list-clear-button'],
-    ['radius-modal', '.modal-dialog'],
-    ['radius-dash', '#dash .dash-background'],
-    ['radius-switcher', '.switcher-list'],
-    ['radius-tile', '.overview-tile, .grid-search-result'],
-    ['radius-search', '.search-section-content'],
-    ['radius-search-entry', '.search-entry'],
-    ['radius-quick-settings', '.quick-settings'],
-    ['radius-quick-header', '.quick-settings-system-item StButton, .quick-settings-system-item .button, .quick-settings-system-item .icon-button, .quick-settings-system-item .power-item'],
-    ['radius-quick-submenu', '.quick-toggle-menu'],
-    ['radius-media', '.message.media-message, .media-message, .quick-settings .message, .quick-settings .media-message'],
+// Containers, cards, pills and buttons. Changed by "Round shell elements".
+const ELEMENTS = [
+    // Menus
+    '.popup-menu-content',
+    '.candidate-popup-content',
+    '.popup-menu-item',
+    '.popup-sub-menu',
+    // Top bar
+    '.panel-button',
+    // Calendar and notifications
+    '.datemenu-popover',
+    '.calendar',
+    '.datemenu-today-button',
+    '.events-button',
+    '.world-clocks-button',
+    '.weather-button',
+    '.message',
+    '.media-message',
+    '.notification-banner',
+    '.message-list-clear-button',
+    // Dialogs, OSD and tooltips
+    '.modal-dialog',
+    '.app-folder-dialog',
+    '.osd-window',
+    '.dash-label',
+    '.window-caption',
+    // Overview
+    '#dash .dash-background',
+    '.overview-tile',
+    '.grid-search-result',
+    '.search-section-content',
+    '.search-entry',
+    '.workspace-thumbnail',
+    // Alt+Tab
+    '.switcher-list',
+    '.switcher-list .item-box',
+    // Screenshot UI
+    '.screenshot-ui-panel',
+    '.screenshot-ui-type-button',
+    // Quick settings
+    '.quick-settings',
+    '.quick-toggle-menu',
+    '.quick-settings-system-item .power-item',
 ];
-const KEYS = new Set([...RADII.map(([key]) => key), 'radius-quick-toggle']);
+
+// Elements that are perfect circles by design. Changed by "Round circular elements".
+const CIRCULAR_ELEMENTS = [
+    '.icon-button',
+    '.quick-settings-system-item .icon-button',
+    '.quick-toggle-menu .header .icon',
+    '.message-close-button',
+    '.message-expand-button',
+    '.calendar-day',
+    '.calendar-today',
+    '.pager-button',
+    '.toggle-switch',
+    '.window-close',
+    '.screenshot-ui-close-button',
+    '.screenshot-ui-capture-button',
+];
 
 // Toggles with a menu arrow are two halves; their inner corners stay square.
-const toggleCss = r => [
+const toggleRules = r => [
     ['.quick-toggle, .quick-toggle-has-menu', `${r}px`],
     ['.quick-toggle-has-menu .quick-toggle:ltr', `${r}px 0 0 ${r}px`],
     ['.quick-toggle-has-menu .quick-toggle:rtl', `0 ${r}px ${r}px 0`],
@@ -30,6 +76,13 @@ const toggleCss = r => [
     ['.quick-toggle-has-menu .quick-toggle-menu-button:rtl', `${r}px 0 0 ${r}px`],
     ['.quick-toggle-has-menu .quick-toggle:ltr:last-child, .quick-toggle-has-menu .quick-toggle:rtl:last-child', `${r}px`],
 ];
+
+// Settings that change the generated stylesheet.
+const KEYS = new Set([
+    'round-shell-elements',
+    'round-circular-elements',
+    'global-rounded-corner-settings',
+]);
 
 // !important so these win over the shell theme and other extensions' stylesheets.
 const rule = (selector, radius) => `${selector} {\n  border-radius: ${radius} !important;\n}\n`;
@@ -39,6 +92,7 @@ export class ShellElements {
     #settingsId = 0;
     #applyId = 0;
     #file = null;
+    #css = '';
 
     constructor(settings) {
         this.#settings = settings;
@@ -65,24 +119,30 @@ export class ShellElements {
         this.#applyId = 0;
         this.#settings.disconnect(this.#settingsId);
         this.#unload();
+        this.#css = '';
     }
 
     buildCss() {
-        let css = '';
-        for (const [key, selector] of RADII) {
-            const r = this.#settings.get_int(key);
-            if (r >= 0)
-                css += rule(selector, `${r}px`);
-        }
-        const r = this.#settings.get_int('radius-quick-toggle');
-        if (r >= 0)
-            css += toggleCss(r).map(([selector, radius]) => rule(selector, radius)).join('');
+        if (!this.#settings.get_boolean('round-shell-elements'))
+            return '';
+        const radius = this.#settings
+            .get_value('global-rounded-corner-settings')
+            .recursiveUnpack().borderRadius;
+        let css = rule(ELEMENTS.join(',\n'), `${radius}px`);
+        css += toggleRules(radius).map(([selector, r]) => rule(selector, r)).join('');
+        if (this.#settings.get_boolean('round-circular-elements'))
+            css += rule(CIRCULAR_ELEMENTS.join(',\n'), `${radius}px`);
         return css;
     }
 
     #apply() {
-        this.#unload();
         const css = this.buildCss();
+        // Other window settings (paddings, color...) don't change the
+        // stylesheet, so there's nothing to reload.
+        if (css === this.#css)
+            return;
+        this.#css = css;
+        this.#unload();
         if (!css)
             return;
         try {
