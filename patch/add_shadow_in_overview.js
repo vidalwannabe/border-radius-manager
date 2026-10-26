@@ -3,7 +3,6 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import Graphene from 'gi://Graphene';
 import { overview } from 'resource:///org/gnome/shell/ui/main.js';
-import { LinearFilterEffect } from '../effect/linear_filter_effect.js';
 import { shouldEnableEffect, windowScaleFactor } from '../manager/utils.js';
 import { OVERVIEW_SHADOW_ACTOR, SHADOW_PADDING } from '../utils/constants.js';
 /**
@@ -31,11 +30,6 @@ export function addShadowInOverview(window, self) {
     }
     // windowContainer has the actual contents of the window preview
     const windowContainer = self.windowContainer;
-    let firstChild = windowContainer.firstChild;
-    // Apply liear interpolation to the window preview to make it look
-    // better (there's an upstream GNOME bug causing windows to be blurry,
-    // this makes the effect less noticeable)
-    firstChild?.add_effect(new LinearFilterEffect());
     // Create a clone of the window's shadow actor and add it to the preview
     const shadowActorClone = new OverviewShadowActorClone(shadow, self);
     windowContainer.bind_property('scale-x', shadowActorClone, 'scale-x', 1);
@@ -44,8 +38,6 @@ export function addShadowInOverview(window, self) {
     // Disconnect all signals when the window preview is destroyed
     const connection = self.connect('destroy', () => {
         shadowActorClone.destroy();
-        firstChild?.clear_effects();
-        firstChild = null;
         self.disconnect(connection);
     });
 }

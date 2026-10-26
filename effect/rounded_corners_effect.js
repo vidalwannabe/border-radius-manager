@@ -3,6 +3,7 @@ var _a;
 import Cogl from 'gi://Cogl';
 import GObject from 'gi://GObject';
 import Shell from 'gi://Shell';
+import { overview } from 'resource:///org/gnome/shell/ui/main.js';
 import { readShader } from '../utils/file.js';
 import { getPref } from '../utils/settings.js';
 const [declarations, code] = readShader(import.meta.url, 'shader/rounded_corners.frag');
@@ -33,6 +34,18 @@ export const RoundedCornersEffect = GObject.registerClass({}, class Effect exten
     }
     vfunc_build_pipeline() {
         this.add_glsl_snippet(Cogl.SnippetHook.FRAGMENT, declarations, code, false);
+    }
+    /**
+     * The window is painted into a full-size offscreen texture, which the
+     * overview previews then scale down. Without mipmaps that downscaling
+     * drops pixels and makes text unreadable, so enable them in the overview.
+     */
+    vfunc_paint_target(node, ctx) {
+        const minFilter = overview.visible
+            ? Cogl.PipelineFilter.LINEAR_MIPMAP_LINEAR
+            : Cogl.PipelineFilter.LINEAR;
+        this.get_pipeline()?.set_layer_filters(0, minFilter, Cogl.PipelineFilter.LINEAR);
+        super.vfunc_paint_target(node, ctx);
     }
     /**
      * Update uniforms of the shader.
