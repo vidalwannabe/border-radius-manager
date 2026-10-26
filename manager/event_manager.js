@@ -76,9 +76,12 @@ callback) {
  * @param object - If object is provided, only disconnect signals from it.
  */
 function disconnectAll(object) {
-    for (const connection of connections) {
+    // Iterate backwards so disconnected entries can be removed in place.
+    for (let i = connections.length - 1; i >= 0; i--) {
+        const connection = connections[i];
         if (object === undefined || connection.object === object) {
             connection.object.disconnect(connection.id);
+            connections.splice(i, 1);
         }
     }
 }
@@ -133,6 +136,13 @@ function applyEffectTo(actor) {
  * @param actor - The window actor to remove the effect from.
  */
 function removeEffectFrom(actor) {
+    // The texture can still emit 'size-changed' after the window is gone,
+    // so its signal has to be disconnected too. Guard against a missing
+    // texture: disconnectAll(undefined) would disconnect everything.
+    const texture = actor.get_texture();
+    if (texture) {
+        disconnectAll(texture);
+    }
     disconnectAll(actor);
     disconnectAll(actor.metaWindow);
     handlers.onRemoveEffect(actor);

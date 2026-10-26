@@ -154,6 +154,10 @@ function refreshShadow(actor) {
  */
 function refreshRoundedCorners(actor) {
     const win = actor.metaWindow;
+    // The window may already be gone if a signal arrives during teardown.
+    if (!win) {
+        return;
+    }
     const windowInfo = actor.rwcCustomData;
     const effect = getRoundedCornersEffect(actor);
     const hasEffect = effect && windowInfo;
